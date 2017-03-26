@@ -8,3 +8,5 @@ C:\Users\Kai's PC\Downloads\mlDemo\bin\Debug\mlDemo.exe
 C:\Users\Kai's PC\Downloads\mlDemo\bin\Debug\mlDemo.pdb
 C:\Users\Kai's PC\Downloads\mlDemo\obj\Debug\mlDemo.exe
 C:\Users\Kai's PC\Downloads\mlDemo\obj\Debug\mlDemo.pdb
+C:\Users\Kai's PC\Downloads\mlDemo\bin\Debug\MathNet.Numerics.dll
+C:\Users\Kai's PC\Downloads\mlDemo\bin\Debug\MathNet.Numerics.xml
