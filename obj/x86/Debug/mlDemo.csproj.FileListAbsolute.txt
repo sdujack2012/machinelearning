@@ -1,0 +1,11 @@
+C:\Users\Kai's PC\Downloads\mlDemo\bin\x86\Debug\mlDemo.exe.config
+C:\Users\Kai's PC\Downloads\mlDemo\bin\x86\Debug\t10k-images.idx3-ubyte
+C:\Users\Kai's PC\Downloads\mlDemo\bin\x86\Debug\t10k-labels.idx1-ubyte
+C:\Users\Kai's PC\Downloads\mlDemo\bin\x86\Debug\train-images.idx3-ubyte
+C:\Users\Kai's PC\Downloads\mlDemo\bin\x86\Debug\train-labels.idx1-ubyte
+C:\Users\Kai's PC\Downloads\mlDemo\bin\x86\Debug\mlDemo.exe
+C:\Users\Kai's PC\Downloads\mlDemo\bin\x86\Debug\mlDemo.pdb
+C:\Users\Kai's PC\Downloads\mlDemo\bin\x86\Debug\Cudafy.NET.dll
+C:\Users\Kai's PC\Downloads\mlDemo\bin\x86\Debug\Cudafy.NET.xml
+C:\Users\Kai's PC\Downloads\mlDemo\obj\x86\Debug\mlDemo.exe
+C:\Users\Kai's PC\Downloads\mlDemo\obj\x86\Debug\mlDemo.pdb

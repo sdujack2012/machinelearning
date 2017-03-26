@@ -1,85 +1,62 @@
 
-// CudaMath.Double.TwoDimensional
-extern "C" __global__  void addMatrix( double* left, int leftLen0, int leftLen1,  double* right, int rightLen0, int rightLen1, int fields,  double* result, int resultLen0, int resultLen1);
-// CudaMath.Double.TwoDimensional
-extern "C" __global__  void addSingle( double* matrix, int matrixLen0, int matrixLen1, int add,  double* result, int resultLen0, int resultLen1);
-// CudaMath.Double.TwoDimensional
-extern "C" __global__  void multiplyMatrix( double* left, int leftLen0, int leftLen1,  double* right, int rightLen0, int rightLen1, int fields,  double* result, int resultLen0, int resultLen1);
-// CudaMath.Double.TwoDimensional
-extern "C" __global__  void multiplySingle( double* matrix, int matrixLen0, int matrixLen1, int multiplicator,  double* result, int resultLen0, int resultLen1);
-// CudaMath.Double.TwoDimensional
-extern "C" __global__  void subtractMatrix( double* left, int leftLen0, int leftLen1,  double* right, int rightLen0, int rightLen1, int fields,  double* result, int resultLen0, int resultLen1);
-// CudaMath.Double.TwoDimensional
-extern "C" __global__  void subtractSingle( double* matrix, int matrixLen0, int matrixLen1, int subtract,  double* result, int resultLen0, int resultLen1);
+// Cudafy.CudafyHelper
+extern "C" __global__  void CudafyTrainOutputLayer(double learningRate,  double* inputData, int inputDataLen0,  double* outputData, int outputDataLen0,  double* expectedResuts, int expectedResutsLen0,  double* weights, int weightsLen0, int weightsLen1,  double* outNodeDelta, int outNodeDeltaLen0);
+// Cudafy.CudafyHelper
+extern "C" __global__  void CudafyTrainHiddenLayer(double learningRate,  double* inputData, int inputDataLen0,  double* outputData, int outputDataLen0,  double* weightsNextLayer, int weightsNextLayerLen0, int weightsNextLayerLen1,  double* weights, int weightsLen0, int weightsLen1,  double* inNodeDelta, int inNodeDeltaLen0,  double* outNodeDelta, int outNodeDeltaLen0);
+// Cudafy.CudafyHelper
+extern "C" __global__  void CudafyComputeOutput( double* trainingData, int trainingDataLen0,  double* weight, int weightLen0, int weightLen1,  double* outputResult, int outputResultLen0);
 
-// CudaMath.Double.TwoDimensional
-extern "C" __global__  void addMatrix( double* left, int leftLen0, int leftLen1,  double* right, int rightLen0, int rightLen1, int fields,  double* result, int resultLen0, int resultLen1)
+// Cudafy.CudafyHelper
+extern "C" __global__  void CudafyTrainOutputLayer(double learningRate,  double* inputData, int inputDataLen0,  double* outputData, int outputDataLen0,  double* expectedResuts, int expectedResutsLen0,  double* weights, int weightsLen0, int weightsLen1,  double* outNodeDelta, int outNodeDeltaLen0)
 {
-	int num = 16 * blockIdx.x + threadIdx.x;
-	int num2 = 16 * blockIdx.y + threadIdx.y;
-	bool flag = num < resultLen0 && num2 < resultLen1;
+	int x = blockIdx.x;
+	bool flag = x < outputDataLen0;
 	if (flag)
 	{
-		result[(num) * resultLen1 + ( num2)] = left[(num) * leftLen1 + ( num2)] + right[(num) * rightLen1 + ( num2)];
-	}
-}
-// CudaMath.Double.TwoDimensional
-extern "C" __global__  void addSingle( double* matrix, int matrixLen0, int matrixLen1, int add,  double* result, int resultLen0, int resultLen1)
-{
-	int num = 16 * blockIdx.x + threadIdx.x;
-	int num2 = 16 * blockIdx.y + threadIdx.y;
-	bool flag = num < resultLen0 && num2 < resultLen1;
-	if (flag)
-	{
-		result[(num) * resultLen1 + ( num2)] = matrix[(num) * matrixLen1 + ( num2)] + (double)add;
-	}
-}
-// CudaMath.Double.TwoDimensional
-extern "C" __global__  void multiplyMatrix( double* left, int leftLen0, int leftLen1,  double* right, int rightLen0, int rightLen1, int fields,  double* result, int resultLen0, int resultLen1)
-{
-	int num = 16 * blockIdx.x + threadIdx.x;
-	int num2 = 16 * blockIdx.y + threadIdx.y;
-	bool flag = num < resultLen0 && num2 < resultLen1;
-	if (flag)
-	{
-		double num3 = 0.0;
-		for (int i = 0; i < fields; i++)
+		int i = 0;
+		outNodeDelta[(x)] = (outputData[(x)] - expectedResuts[(x)]) * outputData[(x)] * (1.0 - outputData[(x)]);
+		for (i = 0; i < weightsLen0 - 1; i++)
 		{
-			num3 += left[(i) * leftLen1 + ( num2)] * right[(num) * rightLen1 + ( i)];
+			weights[(x) * weightsLen1 + ( i)] -= learningRate * outNodeDelta[(x)] * inputData[(i)];
 		}
-		result[(num) * resultLen1 + ( num2)] = num3;
+		weights[(x) * weightsLen1 + ( i)] -= learningRate * outNodeDelta[(x)];
 	}
 }
-// CudaMath.Double.TwoDimensional
-extern "C" __global__  void multiplySingle( double* matrix, int matrixLen0, int matrixLen1, int multiplicator,  double* result, int resultLen0, int resultLen1)
+// Cudafy.CudafyHelper
+extern "C" __global__  void CudafyTrainHiddenLayer(double learningRate,  double* inputData, int inputDataLen0,  double* outputData, int outputDataLen0,  double* weightsNextLayer, int weightsNextLayerLen0, int weightsNextLayerLen1,  double* weights, int weightsLen0, int weightsLen1,  double* inNodeDelta, int inNodeDeltaLen0,  double* outNodeDelta, int outNodeDeltaLen0)
 {
-	int num = 16 * blockIdx.x + threadIdx.x;
-	int num2 = 16 * blockIdx.y + threadIdx.y;
-	bool flag = num < resultLen0 && num2 < resultLen1;
+	int x = blockIdx.x;
+	bool flag = x < outputDataLen0;
 	if (flag)
 	{
-		result[(num) * resultLen1 + ( num2)] = matrix[(num) * matrixLen1 + ( num2)] * (double)multiplicator;
+		double num = 0.0;
+		int i = 0;
+		for (i = 0; i < weightsNextLayerLen0; i++)
+		{
+			num += inNodeDelta[(i)] * weightsNextLayer[(i) * weightsNextLayerLen1 + ( x)];
+		}
+		outNodeDelta[(x)] = num * outputData[(x)] * (1.0 - outputData[(x)]);
+		for (i = 0; i < weightsLen1 - 1; i++)
+		{
+			weights[(x) * weightsLen1 + ( i)] -= learningRate * outNodeDelta[(x)] * inputData[(i)];
+		}
+		weights[(x) * weightsLen1 + ( i)] -= learningRate * outNodeDelta[(x)];
 	}
 }
-// CudaMath.Double.TwoDimensional
-extern "C" __global__  void subtractMatrix( double* left, int leftLen0, int leftLen1,  double* right, int rightLen0, int rightLen1, int fields,  double* result, int resultLen0, int resultLen1)
+// Cudafy.CudafyHelper
+extern "C" __global__  void CudafyComputeOutput( double* trainingData, int trainingDataLen0,  double* weight, int weightLen0, int weightLen1,  double* outputResult, int outputResultLen0)
 {
-	int num = 16 * blockIdx.x + threadIdx.x;
-	int num2 = 16 * blockIdx.y + threadIdx.y;
-	bool flag = num < resultLen0 && num2 < resultLen1;
+	int x = blockIdx.x;
+	bool flag = x < weightLen0;
 	if (flag)
 	{
-		result[(num) * resultLen1 + ( num2)] = left[(num) * leftLen1 + ( num2)] - right[(num) * rightLen1 + ( num2)];
-	}
-}
-// CudaMath.Double.TwoDimensional
-extern "C" __global__  void subtractSingle( double* matrix, int matrixLen0, int matrixLen1, int subtract,  double* result, int resultLen0, int resultLen1)
-{
-	int num = 16 * blockIdx.x + threadIdx.x;
-	int num2 = 16 * blockIdx.y + threadIdx.y;
-	bool flag = num < resultLen0 && num2 < resultLen1;
-	if (flag)
-	{
-		result[(num) * resultLen1 + ( num2)] = matrix[(num) * matrixLen1 + ( num2)] - (double)subtract;
+		double num = 0.0;
+		int i = 0;
+		for (i = 0; i < trainingDataLen0; i++)
+		{
+			num += trainingData[(i)] * weight[(x) * weightLen1 + ( i)];
+		}
+		num += weight[(x) * weightLen1 + ( i)];
+		outputResult[(x)] = 1.0 / (1.0 + exp(-num));
 	}
 }

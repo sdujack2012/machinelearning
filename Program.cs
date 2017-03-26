@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MathNet.Numerics.Providers.LinearAlgebra.Cuda;
 namespace mlDemo
 {
     class Program
@@ -85,7 +84,7 @@ namespace mlDemo
                 Console.WriteLine("Actual Result: " + string.Join(",", actualdResult.Select(x => string.Format("{0:N2}", x))));
                 double maxValue = actualdResult.Max();
                 int maxIndex = actualdResult.ToList().IndexOf(maxValue);
-                if (testResults[i]== maxIndex)
+                if (testResults[i] == maxIndex)
                 {
                     correctCount++;
                 }
@@ -99,7 +98,7 @@ namespace mlDemo
 
     class SGDHlper
     {
-        
+
 
 
         public static double Output(double z)
@@ -109,46 +108,27 @@ namespace mlDemo
         public static double[] ComputeOutput(double[] trainingData, double[,] weight)
         {
             var outputResult = new double[weight.GetLength(0)];
-            for (int k = 0; k < weight.GetLength(0); k++) {
+            for (int k = 0; k < weight.GetLength(0); k++)
+            {
                 double z = 0.0;
                 int i = 0;
                 for (i = 0; i < trainingData.Length; i++)
                 {
-                    z += trainingData[i] * weight[k,i];
+                    z += trainingData[i] * weight[k, i];
                 }
-                z += weight[k,i];
+                z += weight[k, i];
                 outputResult[k] = SGDHlper.Output(z);
             }
-            
+
             return outputResult;
-        }
-        public static double ComputeOutput(double[] trainingData, double[] weight)
-        {
-            double z = 0.0;
-            int i = 0;
-            for (i = 0; i < trainingData.Length; i++)
-            {
-                z += trainingData[i] * weight[i];
-            }
-            z += weight[i];
-            return SGDHlper.Output(z);
         }
         
         public static void TrainOutputLayer(double learningRate, double[] inputData, double[] outputData, double[] expectedResuts, double[,] weights, double[] outNodeDelta)
         {
 
 
-
-            Parallel.For(0, outputData.Length, i =>
-           {
-               int l = 0;
-               outNodeDelta[i] = (outputData[i] - expectedResuts[i]) * outputData[i] * (1 - outputData[i]);
-               for (l = 0; l < weights.GetLength(0) - 1; l++)
-               {
-                   weights[i,l] = weights[i,l] - learningRate * outNodeDelta[i] * inputData[l];
-               }
-               weights[i,l] = weights[i,l] - learningRate * outNodeDelta[i];
-           });
+            CudafyByExample.add_loop_gpu.Execute( learningRate, inputData,outputData, expectedResuts, weights,outNodeDelta);
+            
         }
 
         public static void TrainHiddenLayer(double learningRate, double[] inputData, double[] outputData, double[,] weightsNextLayer, double[,] weights, double[] inNodeDelta, double[] outNodeDelta)
@@ -162,14 +142,14 @@ namespace mlDemo
                 int l = 0;
                 for (l = 0; l < weightsNextLayer.GetLength(0); l++)
                 {
-                    accumulateErrorDelta += inNodeDelta[l] * weightsNextLayer[l,i];
+                    accumulateErrorDelta += inNodeDelta[l] * weightsNextLayer[l, i];
                 }
                 outNodeDelta[i] = accumulateErrorDelta * outputData[i] * (1 - outputData[i]);
                 for (l = 0; l < weights.GetLength(1) - 1; l++)
                 {
-                    weights[i,l] = weights[i,l] - learningRate * outNodeDelta[i] * inputData[l];
+                    weights[i, l] = weights[i, l] - learningRate * outNodeDelta[i] * inputData[l];
                 }
-                weights[i,l] = weights[i,l] - learningRate * outNodeDelta[i];
+                weights[i, l] = weights[i, l] - learningRate * outNodeDelta[i];
             });
         }
 
@@ -203,7 +183,7 @@ namespace mlDemo
             Weights = new double[layers.Length - 1][,];
             for (int i = 1; i < layers.Length; i++)
             {
-                Weights[i-1] = new double[layers[i], layers[i - 1] + 1];
+                Weights[i - 1] = new double[layers[i], layers[i - 1] + 1];
                 Array.Copy(SGDHlper.Make2DArray(Enumerable.Repeat(0, layers[i] * (layers[i - 1] + 1)).Select(x => (random.NextDouble() - 0.5) * 2).ToArray(), layers[i - 1] + 1, layers[i]), Weights[i - 1], layers[i] * (layers[i - 1] + 1));
             }
         }
@@ -213,29 +193,29 @@ namespace mlDemo
             for (int i = 0; i < newWeights.Length; i++)
             {
                 newWeights[i] = new double[Weights[i].GetLength(0), Weights[i].GetLength(1)];
-                Array.Copy(Weights[i], newWeights[i], Weights[i].GetLength(0)*Weights[i].GetLength(1));
+                Array.Copy(Weights[i], newWeights[i], Weights[i].GetLength(0) * Weights[i].GetLength(1));
             }
 
-            var inputDataForLayers = new double[Weights.Length+1][];
+            var inputDataForLayers = new double[Weights.Length + 1][];
             var count = 0;
             inputDataForLayers[0] = trainingData;
             Weights.ToList().ForEach(y => {
-                inputDataForLayers[count+1] = SGDHlper.ComputeOutput(inputDataForLayers[count], y);
+                inputDataForLayers[count + 1] = SGDHlper.ComputeOutput(inputDataForLayers[count], y);
                 count++;
             });
             var outputDelta = new double[expectedResuts.Length];
-            SGDHlper.TrainOutputLayer(LearningRate, inputDataForLayers[inputDataForLayers.Length-2], inputDataForLayers[inputDataForLayers.Length - 1], expectedResuts, newWeights[newWeights.Length - 1], outputDelta);
+            SGDHlper.TrainOutputLayer(LearningRate, inputDataForLayers[inputDataForLayers.Length - 2], inputDataForLayers[inputDataForLayers.Length - 1], expectedResuts, newWeights[newWeights.Length - 1], outputDelta);
 
             var inNodeDelta = outputDelta;
 
             for (int i = newWeights.Length - 2; i >= 0; i--)
             {
                 outputDelta = new double[newWeights[i].GetLength(0)];
-                SGDHlper.TrainHiddenLayer(LearningRate, inputDataForLayers[i], inputDataForLayers[i+1], Weights[i + 1], newWeights[i], inNodeDelta, outputDelta);
+                SGDHlper.TrainHiddenLayer(LearningRate, inputDataForLayers[i], inputDataForLayers[i + 1], Weights[i + 1], newWeights[i], inNodeDelta, outputDelta);
                 inNodeDelta = outputDelta;
             }
 
-            Weights= newWeights;
+            Weights = newWeights;
 
         }
 
@@ -256,7 +236,7 @@ namespace mlDemo
                 inputDataForLayers[count + 1] = SGDHlper.ComputeOutput(inputDataForLayers[count], weight);
                 count++;
             });
-           
+
 
             return inputDataForLayers;
 
