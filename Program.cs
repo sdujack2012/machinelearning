@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Cudafy;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -127,30 +128,15 @@ namespace mlDemo
         {
 
 
-            CudafyByExample.add_loop_gpu.Execute( learningRate, inputData,outputData, expectedResuts, weights,outNodeDelta);
+            CudafyHelper.TrainOutputLayer( learningRate, inputData,outputData, expectedResuts, weights,outNodeDelta);
             
         }
 
         public static void TrainHiddenLayer(double learningRate, double[] inputData, double[] outputData, double[,] weightsNextLayer, double[,] weights, double[] inNodeDelta, double[] outNodeDelta)
         {
 
+            CudafyHelper.TrainHiddenLayer( learningRate, inputData,outputData,weightsNextLayer,weights,inNodeDelta,  outNodeDelta);
 
-
-            Parallel.For(0, outputData.Length, i =>
-            {
-                double accumulateErrorDelta = 0;
-                int l = 0;
-                for (l = 0; l < weightsNextLayer.GetLength(0); l++)
-                {
-                    accumulateErrorDelta += inNodeDelta[l] * weightsNextLayer[l, i];
-                }
-                outNodeDelta[i] = accumulateErrorDelta * outputData[i] * (1 - outputData[i]);
-                for (l = 0; l < weights.GetLength(1) - 1; l++)
-                {
-                    weights[i, l] = weights[i, l] - learningRate * outNodeDelta[i] * inputData[l];
-                }
-                weights[i, l] = weights[i, l] - learningRate * outNodeDelta[i];
-            });
         }
 
         public static T[,] Make2DArray<T>(T[] input, int height, int width)
