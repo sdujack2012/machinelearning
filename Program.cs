@@ -11,7 +11,7 @@ namespace mlDemo
     {
         static void Main(string[] args)
         {
-            var macine = new Machine(new int[] { 784, 30, 10 }, 0.1);
+            var macine = new Machine(new int[] { 784, 30, 10 }, 0.4);
             var currentImage = 0;
             var trainBytes = new byte[60000][];
             var expectedResults = new byte[60000];
@@ -66,32 +66,39 @@ namespace mlDemo
             brfsLabel.Close();
             brImage.Close();
             Console.WriteLine("Total Test Data:" + currentImage);
-
-            for (int i = 0; i < 60000; i++)
+            Random rd = new Random();
+            for (int k = 0; k < 25; k++)
             {
 
-                var expectedResult = new double[10];
-                expectedResult[expectedResults[i]] = 1;
-                macine.Train(trainBytes[i].Select(x => System.Convert.ToDouble(x) / 255).ToArray(), expectedResult);
-            }
-            var correctCount = 0;
-            for (int i = 0; i < testBytes.Length; i++)
-            {
-                var expectedResult = new double[10];
-                expectedResult[testResults[i]] = 1;
-                var actualdResult = macine.ComputeOutput(testBytes[i].Select(x => System.Convert.ToDouble(x) / 255).ToArray());
-                Console.WriteLine("#######################");
-                Console.WriteLine("Correct Result:" + string.Join(",", expectedResult.Select(x => string.Format("{0:N2}", x))));
-                Console.WriteLine("Actual Result: " + string.Join(",", actualdResult.Select(x => string.Format("{0:N2}", x))));
-                double maxValue = actualdResult.Max();
-                int maxIndex = actualdResult.ToList().IndexOf(maxValue);
-                if (testResults[i] == maxIndex)
+                for (int i = 0; i < 60000; i++)
                 {
-                    correctCount++;
+                    int rdInt = rd.Next(0, 59999);
+                    var expectedResult = new double[10];
+                    expectedResult[expectedResults[rdInt]] = 1;
+                    macine.Train(trainBytes[rdInt].Select(x => System.Convert.ToDouble(x) / 255).ToArray(), expectedResult);
                 }
+
+                var correctCount = 0;
+                for (int i = 0; i < testBytes.Length; i++)
+                {
+                    var expectedResult = new double[10];
+                    expectedResult[testResults[i]] = 1;
+                    var actualdResult = macine.ComputeOutput(testBytes[i].Select(x => System.Convert.ToDouble(x) / 255).ToArray());
+                    Console.WriteLine("#######################");
+                    Console.WriteLine("Correct Result:" + string.Join(",", expectedResult.Select(x => string.Format("{0:N2}", x))));
+                    Console.WriteLine("Actual Result: " + string.Join(",", actualdResult.Select(x => string.Format("{0:N2}", x))));
+                    double maxValue = actualdResult.Max();
+                    int maxIndex = actualdResult.ToList().IndexOf(maxValue);
+                    if (testResults[i] == maxIndex)
+                    {
+                        correctCount++;
+                    }
+                }
+                Console.WriteLine("#######################");
+                Console.WriteLine("Correct Rate:" + string.Format("{0:N4}", (double)correctCount / 10000));
             }
-            Console.WriteLine("#######################");
-            Console.WriteLine("Correct Rate:" + string.Format("{0:N2}", (double)correctCount / 10000));
+            
+            
             Console.Read();
 
         }
@@ -109,33 +116,57 @@ namespace mlDemo
         public static double[] ComputeOutput(double[] trainingData, double[,] weight)
         {
             var outputResult = new double[weight.GetLength(0)];
-            for (int k = 0; k < weight.GetLength(0); k++)
-            {
-                double z = 0.0;
-                int i = 0;
-                for (i = 0; i < trainingData.Length; i++)
-                {
-                    z += trainingData[i] * weight[k, i];
-                }
-                z += weight[k, i];
-                outputResult[k] = SGDHlper.Output(z);
-            }
-
+            Parallel.For(0, weight.GetLength(0), k =>
+             {
+                 double z = 0.0;
+                 int i = 0;
+                 for (i = 0; i < trainingData.Length; i++)
+                 {
+                     z += trainingData[i] * weight[k, i];
+                 }
+                 z += weight[k, i];
+                 outputResult[k] = SGDHlper.Output(z);
+             });
+            //CudafyHelper.ComputeOutput(trainingData, weight, outputResult);
             return outputResult;
         }
         
         public static void TrainOutputLayer(double learningRate, double[] inputData, double[] outputData, double[] expectedResuts, double[,] weights, double[] outNodeDelta)
         {
 
-
-            CudafyHelper.TrainOutputLayer( learningRate, inputData,outputData, expectedResuts, weights,outNodeDelta);
+            Parallel.For(0, outputData.Length, tid =>
+            {
+                int l = 0;
+                outNodeDelta[tid] = (outputData[tid] - expectedResuts[tid]) * outputData[tid] * (1 - outputData[tid]);
+                for (l = 0; l < weights.GetLength(0) - 1; l++)
+                {
+                    weights[tid, l] = weights[tid, l] - learningRate * outNodeDelta[tid] * inputData[l];
+                }
+                weights[tid, l] = weights[tid, l] - learningRate * outNodeDelta[tid];
+            });
+            //CudafyHelper.TrainOutputLayer( learningRate, inputData,outputData, expectedResuts, weights,outNodeDelta);
             
         }
 
         public static void TrainHiddenLayer(double learningRate, double[] inputData, double[] outputData, double[,] weightsNextLayer, double[,] weights, double[] inNodeDelta, double[] outNodeDelta)
         {
 
-            CudafyHelper.TrainHiddenLayer( learningRate, inputData,outputData,weightsNextLayer,weights,inNodeDelta,  outNodeDelta);
+            Parallel.For(0, outputData.Length, tid =>
+            {
+                double accumulateErrorDelta = 0;
+                int l = 0;
+                for (l = 0; l < weightsNextLayer.GetLength(0); l++)
+                {
+                    accumulateErrorDelta += inNodeDelta[l] * weightsNextLayer[l, tid];
+                }
+                outNodeDelta[tid] = accumulateErrorDelta * outputData[tid] * (1 - outputData[tid]);
+                for (l = 0; l < weights.GetLength(1) - 1; l++)
+                {
+                    weights[tid, l] = weights[tid, l] - learningRate * outNodeDelta[tid] * inputData[l];
+                }
+                weights[tid, l] = weights[tid, l] - learningRate * outNodeDelta[tid];
+            });
+            //CudafyHelper.TrainHiddenLayer( learningRate, inputData,outputData,weightsNextLayer,weights,inNodeDelta,  outNodeDelta);
 
         }
 
